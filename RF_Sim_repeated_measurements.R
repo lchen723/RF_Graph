@@ -18,7 +18,7 @@ Omega4_collect = NULL
 IM4 = matrix(0,p,m)
 Omega4 = matrix(0,m,m)
 
-N = 20
+N = 100
 
 for(i in 1:N) {
 
