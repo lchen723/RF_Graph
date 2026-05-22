@@ -25,7 +25,7 @@ IM4_collect = NULL
 Omega4_collect = NULL
 IM1 = matrix(0,p,m); IM2 = matrix(0,p,m); IM3 = matrix(0,p,m); IM4 = matrix(0,p,m)
 Omega1 = matrix(0,m,m); Omega2 = matrix(0,m,m); Omega3 = matrix(0,m,m); Omega4 = matrix(0,m,m)
-N = 20
+N = 100
 
 for(i in 1:N) {
 
