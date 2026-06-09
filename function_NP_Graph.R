@@ -1,58 +1,30 @@
-NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta = 0.5, r = 0.8, lambda = 1, 
-    pi = 0.8, label_name, var_thred = 5) 
+NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta, label_name, var_thred = 5) 
 {
-    correct_W = function(W, sigma_delta, r, lambda, pi) {
-        m = ncol(W)
+    correct_W = function(W, sigma_delta) {  ## apply regression calibration under multivariat version
+        covariance_matrix_W = as.matrix(stats::cor(W))
         n = nrow(W)
-        model = c()
-        for (j in 1:m) {
-            if (sum(W[, j]%%1 == 0) == n & sum(W[, j] != 0 & 
-                W[, j] != 1) > 0) {
-                model = c(model, "counts")
-            }
-            else if (sum(W[, j]%%1 == 0) == n & sum(W[, j] != 
-                0 & W[, j] != 1) == 0) {
-                model = c(model, "binary")
-            }
-            else {
-                model = c(model, "continuous")
-            }
+        m = ncol(W)
+        Y = matrix(0, nrow = n, ncol = m)
+        for (i in 1:n) {
+            Y[i, ] = colMeans(W) + t(covariance_matrix_W - sigma_delta) %*% 
+                solve(covariance_matrix_W + diag(0.02, dim(W)[2])) %*% 
+                (W[i, ] - colMeans(W))
         }
-        Y = data.frame(matrix(ncol = m, nrow = n))
-        colnames(Y) = colnames(W)
-        for (j in 1:m) {
-            if (model[j] == "continuous") {
-                Y[, j] = mean(W[, j]) + (stats::var(W[, j]) - 
-                  sigma_delta[j,j])/stats::var(W[, j]) * (W[, j] - 
-                  mean(W[, j]))
-            }
-            else if (model[j] == "binary") {
-                S = stats::rbinom(n, 1, r)
-                Y[, j] = (W[, j] + S - 1)/(2 * S - 1)
-            }
-            else {
-                Y[, j] = ((mean(W[, j]) - lambda)/(1 - pi)) + 
-                  ((mean(W[, j]) - lambda)/(1 - pi)) * (mean(W[, 
-                    j]) - lambda)/(lambda + (3 * pi + 1)/(1 - 
-                    pi) * (mean(W[, j]) - lambda)) * (W[, j] - 
-                    mean(W[, j]))
-            }
-        }
-        return(Y)
-    }
-    correct_Z = function(Z, sigma_eta) {
+        return(as.data.frame(Y)) }
+
+    correct_Z = function(Z, sigma_eta) {  ## apply regression calibration under multivariat version
         covariance_matrix_Z = as.matrix(stats::cor(Z))
         n = nrow(Z)
         p = ncol(Z)
         X = matrix(0, nrow = n, ncol = p)
         for (i in 1:n) {
             X[i, ] = colMeans(Z) + t(covariance_matrix_Z - sigma_eta) %*% 
-                solve(covariance_matrix_Z + diag(0.2, dim(Z)[2])) %*% 
+                solve(covariance_matrix_Z + diag(0.02, dim(Z)[2])) %*% 
                 (Z[i, ] - colMeans(Z))
         }
         return(as.data.frame(X))
     }
-    Y = as.matrix(correct_W(W, sigma_delta, r, lambda, pi))
+    Y = as.matrix(correct_W(W, sigma_delta))
     X = as.matrix(correct_Z(Z, sigma_eta))
     models = list()
     importance = list()
