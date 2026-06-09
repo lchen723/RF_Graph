@@ -211,7 +211,7 @@ PSE4 = PSE4 + sum(abs(pred - W))
 Z = NULL
 for(i in 1:20) {
 W =  mean(Y[, i]) + (var(Y[, i]) - 0) / var(Y[, i]) * (Y[, i] - mean(Y[, i]))
-col = IM5[,i]
+col = IM4[,i]
 for(j in 1:500) {
 if(col[j]!=0)
 Z = cbind(Z, mean(X[, j]) + (var(X[, j]) - 0) / var(X[, j]) * (X[, j] - mean(X[, j])))
@@ -225,6 +225,8 @@ PSE5 = PSE5 + sum(abs(pred - W))
 
 }
 
+
+
 round(PSE1 / (dim(Y)[1]*dim(Y)[2]),3)
 round(PSE2 / (dim(Y)[1]*dim(Y)[2]),3)
 round(PSE3 / (dim(Y)[1]*dim(Y)[2]),3)
@@ -235,13 +237,51 @@ round(PSE5 / (dim(Y)[1]*dim(Y)[2]),3)
 ##     estimate the nonlinear curves-microRNA vs genes     ##
 #############################################################
 
+
+correct_data = function(W, Z, sigma_eta, sigma_delta) 
+{
+    correct_W = function(W, sigma_delta) {
+        covariance_matrix_W = as.matrix(stats::cor(W))
+        n = nrow(W)
+        m = ncol(W)
+        Y = matrix(0, nrow = n, ncol = m)
+        for (i in 1:n) {
+            Y[i, ] = colMeans(W) + t(covariance_matrix_W - sigma_delta) %*% 
+                solve(covariance_matrix_W + diag(0.02, dim(W)[2])) %*% 
+                (W[i, ] - colMeans(W))
+        }
+        return(as.data.frame(Y)) }
+
+    correct_Z = function(Z, sigma_eta) {
+        covariance_matrix_Z = as.matrix(stats::cor(Z))
+        n = nrow(Z)
+        p = ncol(Z)
+        X = matrix(0, nrow = n, ncol = p)
+        for (i in 1:n) {
+            X[i, ] = colMeans(Z) + t(covariance_matrix_Z - sigma_eta) %*% 
+                solve(covariance_matrix_Z + diag(0.2, dim(Z)[2])) %*% 
+                (Z[i, ] - colMeans(Z))
+        }
+        return(as.data.frame(X))
+    }
+Y = correct_W(W, sigma_delta)
+X = correct_W(Z, sigma_eta)
+Data = list(Y,X); names(Data) = c("Y","X")
+return(Data)
+
+}
+
+###################################
+
 ##Scenario I-0.2
+I_02 = correct_data(Y,X,sigma_eta=diag(0.2,p),sigma_delta = diag(0.2,m))
+
 smooth_data_I_02 = NULL
 j = which(gene == "GABBR2")
 for(i in 1:length(which(B3 == "GABBR2"))) {
 k = which(B3 == "GABBR2")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - 0.2) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - 0.2) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
+Z =  I_02$X[,j]
+W =  I_02$Y[,k]
 
 
 DATA = data.frame(W, Z)
@@ -254,31 +294,24 @@ smooth_data_I_02[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_I_02[[1]]$x, smooth_data_I_02[[1]]$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = "GABBR2",
-     ylab = paste(mRNA[which(B3 == "GABBR2")[1]]), lwd = 2, ylim = c(-0.8,0.6), xlim=c(-2,4))
+     ylab = paste(mRNA[which(B3 == "GABBR2")[1]]), lwd = 2, ylim = c(-1,1.6), xlim=c(-13,13))
 
 plot(smooth_data_I_02[[2]]$x, smooth_data_I_02[[2]]$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = "GABBR2",
-     ylab = paste(mRNA[which(B3 == "GABBR2")[2]]), lwd = 2, ylim = c(-1.3,0), xlim=c(-2,4))
-
-
-plot(smooth_data_I_02[[3]]$x, smooth_data_I_02[[3]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "GABBR2",
-     ylab = paste(mRNA[which(B3 == "GABBR2")[3]]), lwd = 2, ylim = c(-0.6,0.3), xlim=c(-2,3))
+     ylab = paste(mRNA[which(B3 == "GABBR2")[2]]), lwd = 2, ylim = c(-1.2,2), xlim=c(-13,13))
 
 
 ###
 
 smooth_data_I_02_2 = NULL
-j = which(gene == "TF")
-for(i in 1:length(which(B3 == "TF"))) {
-k = which(B3 == "TF")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - 0.2) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - 0.2) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
-
+j = which(gene == "RPL39L")
+for(i in 1:length(which(B3 == "RPL39L"))) {
+k = which(B3 == "RPL39L")[i]
+Z =  I_02$X[,j]
+W =  I_02$Y[,k]
 
 DATA = data.frame(W, Z)
 model = randomForest(W ~ Z, data = DATA)
@@ -290,26 +323,28 @@ smooth_data_I_02_2[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_I_02_2[[1]]$x, smooth_data_I_02_2[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "TF",
-     ylab = paste(mRNA[which(B3 == "TF")[1]]), lwd = 2)
+     type = "l",      
+     xlab = "RPL39L",
+     ylab = paste(mRNA[which(B3 == "RPL39L")[1]]), lwd = 2)
 
 plot(smooth_data_I_02_2[[2]]$x, smooth_data_I_02_2[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "TF",
-     ylab = paste(mRNA[which(B3 == "TF")[2]]), lwd = 2)
+     type = "l",      
+     xlab = "RPL39L",
+     ylab = paste(mRNA[which(B3 == "RPL39L")[2]]), lwd = 2)
 
 
 
 ##########################
 
 ##Scenario I-0.5
+I_05 = correct_data(Y,X,sigma_eta=diag(0.5,p),sigma_delta = diag(0.5,m))
+
 smooth_data_I_05 = NULL
 j = which(gene == "GABBR2")
-for(i in 1:length(which(B4 == "GABBR2"))) {
-k = which(B4 == "GABBR2")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - 0.5) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - 0.5) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
+for(i in 1:length(c(which(B4 == "GABBR2"),15))) {
+k = c(which(B4 == "GABBR2"),15)[i]
+Z =  I_05$X[,j]
+W =  I_05$Y[,k]
 
 
 DATA = data.frame(W, Z)
@@ -322,31 +357,43 @@ smooth_data_I_05[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_I_05[[1]]$x, smooth_data_I_05[[1]]$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = "GABBR2",
-     ylab = paste(mRNA[which(B4 == "GABBR2")[1]]), lwd = 2, ylim = c(-0.8,0.6), xlim=c(-2,4))
+     ylab = paste(mRNA[which(B4 == "GABBR2")[1]]), lwd = 2, ylim = c(-1,1.6), xlim=c(-13,13))
 
 plot(smooth_data_I_05[[2]]$x, smooth_data_I_05[[2]]$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",     
      xlab = "GABBR2",
-     ylab = paste(mRNA[which(B4 == "GABBR2")[2]]), lwd = 2, ylim = c(-1.3,0), xlim=c(-2,4))
+     ylab = paste(mRNA[which(B4 == "GABBR2")[2]]), lwd = 2)
 
 
 plot(smooth_data_I_05[[3]]$x, smooth_data_I_05[[3]]$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = "GABBR2",
-     ylab = paste(mRNA[which(B4 == "GABBR2")[3]]), lwd = 2, ylim = c(-0.6,0.3), xlim=c(-2,3))
+     ylab = paste(mRNA[which(B4 == "GABBR2")[3]]), lwd = 2)
+
+plot(smooth_data_I_05[[4]]$x, smooth_data_I_05[[4]]$y,
+     type = "l",      
+     xlab = "GABBR2",
+     ylab = paste(mRNA[which(B4 == "GABBR2")[4]]), lwd = 2)
+
+plot(smooth_data_I_05[[5]]$x, smooth_data_I_05[[5]]$y,
+     type = "l",      
+     xlab = "GABBR2",
+     ylab = paste(mRNA[15]), lwd = 2, ylim = c(-1.2,2), xlim=c(-13,13))
 
 
 ##########################
 
 ##Scenario II-0.5
+II_05 = correct_data(Y,X,sigma_eta=(1-R)*Sigma_X, sigma_delta = (1-R)*Sigma_Y)
+
 smooth_data_II_05 = NULL
-j = which(gene == "HOXA4")
-for(i in 1:length(which(B1 == "HOXA4"))) {
-k = which(B1 == "HOXA4")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - sigma_etaR[j,j]) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - sigma_deltaR[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
+j = which(gene == "VSNL1")
+for(i in 1:length(which(B1 == "VSNL1"))) {
+k = which(B1 == "VSNL1")[i]
+Z =  II_05$X[,j]
+W =  II_05$Y[,k]
 
 
 DATA = data.frame(W, Z)
@@ -359,26 +406,25 @@ smooth_data_II_05[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_II_05[[1]]$x, smooth_data_II_05[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "HOXA4",
-     ylab = paste(mRNA[which(B1 == "HOXA4")[1]]), lwd = 2)
+     type = "l",      
+     xlab = "VSNL1",
+     ylab = paste(mRNA[which(B1 == "VSNL1")[1]]), lwd = 2)
 
 plot(smooth_data_II_05[[2]]$x, smooth_data_II_05[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "HOXA4",
-     ylab = paste(mRNA[which(B1 == "HOXA4")[2]]), lwd = 2)
+     type = "l",      
+     xlab = "VSNL1",
+     ylab = paste(mRNA[which(B1 == "VSNL1")[2]]), lwd = 2)
 
 
 
 #####
 
 smooth_data_II_05_2 = NULL
-j = which(gene == "C20orf103")
-for(i in 1:length(which(B1 == "C20orf103"))) {
-k = which(B1 == "C20orf103")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - sigma_etaR[j,j]) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - sigma_deltaR[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
-
+j = which(gene == "TF")
+for(i in 1:length(which(B1 == "TF"))) {
+k = which(B1 == "TF")[i]
+Z =  II_05$X[,j]
+W =  II_05$Y[,k]
 
 DATA = data.frame(W, Z)
 model = randomForest(W ~ Z, data = DATA)
@@ -390,27 +436,63 @@ smooth_data_II_05_2[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_II_05_2[[1]]$x, smooth_data_II_05_2[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "C20orf103",
-     ylab = paste(mRNA[which(B1 == "C20orf103")[1]]), lwd = 2)
+     type = "l",      
+     xlab = "TF",
+     ylab = paste(mRNA[which(B1 == "TF")[1]]), lwd = 2)
 
 plot(smooth_data_II_05_2[[2]]$x, smooth_data_II_05_2[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "C20orf103",
-     ylab = paste(mRNA[which(B1 == "C20orf103")[2]]), lwd = 2)
+     type = "l",     
+     xlab = "TF",
+     ylab = paste(mRNA[which(B1 == "TF")[2]]), lwd = 2)
+
+
+plot(smooth_data_II_05_2[[3]]$x, smooth_data_II_05_2[[3]]$y,
+     type = "l",      
+     xlab = "TF",
+     ylab = paste(mRNA[which(B1 == "TF")[3]]), lwd = 2)
+
+####
+
+smooth_data_II_05_3 = NULL
+j = which(gene == "MAL")
+for(i in 1:length(which(B1 == "MAL"))) {
+k = which(B1 == "MAL")[i]
+Z =  II_05$X[,j]
+W =  II_05$Y[,k]
+
+DATA = data.frame(W, Z)
+model = randomForest(W ~ Z, data = DATA)
+pred = predict(model)
+
+ord_1 = order(Z)
+smooth_data_II_05_3[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5) 
+
+}
+
+plot(smooth_data_II_05_3[[1]]$x, smooth_data_II_05_3[[1]]$y,
+     type = "l",      
+     xlab = "MAL",
+     ylab = paste(mRNA[which(B1 == "MAL")[1]]), lwd = 2)
+
+plot(smooth_data_II_05_3[[2]]$x, smooth_data_II_05_3[[2]]$y,
+     type = "l",      
+     xlab = "MAL",
+     ylab = paste(mRNA[which(B1 == "MAL")[2]]), lwd = 2)
+
 
 
 
 ##########################
 
 ##Scenario II-0.8
-smooth_data_II_08 = NULL
-j = which(gene == "VSNL1")
-for(i in 1:length(which(B2 == "VSNL1"))) {
-k = which(B2 == "VSNL1")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - sigma_etaR1[j,j]) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - sigma_deltaR1[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
+II_08 = correct_data(Y,X,sigma_eta=(1-R1)*Sigma_X, sigma_delta = (1-R1)*Sigma_Y)
 
+smooth_data_II_08 = NULL
+j = which(gene == "LEFTY2")
+for(i in 1:length(which(B2 == "LEFTY2"))) {
+k = which(B2 == "LEFTY2")[i]
+Z =  II_08$X[,j]
+W =  II_08$Y[,k]
 
 DATA = data.frame(W, Z)
 model = randomForest(W ~ Z, data = DATA)
@@ -422,26 +504,25 @@ smooth_data_II_08[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_II_08[[1]]$x, smooth_data_II_08[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "VSNL1",
-     ylab = paste(mRNA[which(B2 == "VSNL1")[1]]), lwd = 2)
+     type = "l",      
+     xlab = "LEFTY2",
+     ylab = paste(mRNA[which(B2 == "LEFTY2")[1]]), lwd = 2)
 
 plot(smooth_data_II_08[[2]]$x, smooth_data_II_08[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "VSNL1",
-     ylab = paste(mRNA[which(B2 == "VSNL1")[2]]), lwd = 2)
+     type = "l",      
+     xlab = "LEFTY2",
+     ylab = paste(mRNA[which(B2 == "LEFTY2")[2]]), lwd = 2)
 
 
 
 #####
 
 smooth_data_II_08_02 = NULL
-j = which(gene == "RND3")
-for(i in 1:length(which(B2 == "RND3"))) {
-k = which(B2 == "RND3")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - sigma_etaR1[j,j]) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - sigma_deltaR1[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
-
+j = which(gene == "BBOX1")
+for(i in 1:length(which(B2 == "BBOX1"))) {
+k = which(B2 == "BBOX1")[i]
+Z =  II_08$X[,j]
+W =  II_08$Y[,k]
 
 DATA = data.frame(W, Z)
 model = randomForest(W ~ Z, data = DATA)
@@ -453,87 +534,61 @@ smooth_data_II_08_02[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_II_08_02[[1]]$x, smooth_data_II_08_02[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "RND3",
-     ylab = paste(mRNA[which(B2 == "RND3")[1]]), lwd = 2)
+     type = "l",      
+     xlab = "BBOX1",
+     ylab = paste(mRNA[which(B2 == "BBOX1")[1]]), lwd = 2)
 
 plot(smooth_data_II_08_02[[2]]$x, smooth_data_II_08_02[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "RND3",
-     ylab = paste(mRNA[which(B2 == "RND3")[2]]), lwd = 2)
-
-
-#####
-
-smooth_data_II_08_03 = NULL
-j = which(gene == "LPL")
-for(i in 1:length(which(B2 == "LPL"))) {
-k = which(B2 == "LPL")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - sigma_etaR1[j,j]) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - sigma_deltaR1[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
-
-
-DATA = data.frame(W, Z)
-model = randomForest(W ~ Z, data = DATA)
-pred = predict(model)
-
-ord_1 = order(Z)
-smooth_data_II_08_03[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5) 
-
-}
-
-plot(smooth_data_II_08_03[[1]]$x, smooth_data_II_08_03[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "LPL",
-     ylab = paste(mRNA[which(B2 == "LPL")[1]]), lwd = 2)
-
-plot(smooth_data_II_08_03[[2]]$x, smooth_data_II_08_03[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "LPL",
-     ylab = paste(mRNA[which(B2 == "LPL")[2]]), lwd = 2)
-
-
-#####
-
-smooth_data_II_08_04 = NULL
-j = which(gene == "HLA.DPB1")
-for(i in 1:length(which(B2 == "LPL"))) {
-k = which(B2 == "HLA.DPB1")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - sigma_etaR1[j,j]) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - sigma_deltaR1[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
-
-
-DATA = data.frame(W, Z)
-model = randomForest(W ~ Z, data = DATA)
-pred = predict(model)
-
-ord_1 = order(Z)
-smooth_data_II_08_04[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5) 
-
-}
-
-plot(smooth_data_II_08_04[[1]]$x, smooth_data_II_08_04[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "HLA.DPB1",
-     ylab = paste(mRNA[which(B2 == "HLA.DPB1")[1]]), lwd = 2)
-
-plot(smooth_data_II_08_04[[2]]$x, smooth_data_II_08_04[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "HLA.DPB1",
-     ylab = paste(mRNA[which(B2 == "HLA.DPB1")[2]]), lwd = 2)
-
-
+     type = "l",      
+     xlab = "BBOX1",
+     ylab = paste(mRNA[which(B2 == "BBOX1")[2]]), lwd = 2)
 
 
 
 
 ##Naive
+Naive = correct_data(Y,X,sigma_eta=diag(0,p),sigma_delta = diag(0,m))
+
 smooth_data_naive = NULL
 j = which(gene == "GABBR2")
 for(i in 1:length(which(B5 == "GABBR2"))) {
 k = which(B5 == "GABBR2")[i]
-Z =  mean(X[, j]) + (var(X[, j]) - 0) / var(X[, j]) * (X[, j] - mean(X[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - 0) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
+Z =  Naive$X[,j]
+W =  Naive$Y[,k]
+
+DATA = data.frame(W, Z)
+model = randomForest(W ~ Z, data = DATA)
+pred = predict(model)
+
+ord_1 = order(Z)
+smooth_data_naive[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5) 
+
+}
+
+plot(smooth_data_naive[[1]]$x, smooth_data_naive[[1]]$y,
+     type = "l",      
+     xlab = "GABBR2",
+     ylab = paste(mRNA[which(B5 == "GABBR2")[1]]), lwd = 2, ylim = c(-1,1.6), xlim=c(-13,13))
+
+plot(smooth_data_naive[[2]]$x, smooth_data_naive[[2]]$y,
+     type = "l",      
+     xlab = "GABBR2",
+     ylab = paste(mRNA[which(B5 == "GABBR2")[2]]), lwd = 2)
+
+
+plot(smooth_data_I_05[[3]]$x, smooth_data_I_05[[3]]$y,
+     type = "l",      
+     xlab = "GABBR2",
+     ylab = paste(mRNA[which(B5 == "GABBR2")[3]]), lwd = 2, ylim = c(-1.2,2), xlim=c(-13,13))
+
+
+
+smooth_data_naive = NULL
+j = which(gene == "CHGA")
+for(i in 1:length(which(B5 == "CHGA"))) {
+k = which(B5 == "CHGA")[i]
+Z =  Naive$X[,j]
+W =  Naive$Y[,k]
 
 
 DATA = data.frame(W, Z)
@@ -546,20 +601,20 @@ smooth_data_naive[[i]] = lowess(Z[ord_1], pred[ord_1], f = 0.5)
 }
 
 plot(smooth_data_naive[[1]]$x, smooth_data_naive[[1]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "GABBR2",
-     ylab = paste(mRNA[which(B5 == "GABBR2")[1]]), lwd = 2, ylim = c(-0.8,0.6), xlim=c(-2,4))
+     type = "l",     
+     xlab = "CHGA",
+     ylab = paste(mRNA[which(B5 == "CHGA")[1]]), lwd = 2)
 
 plot(smooth_data_naive[[2]]$x, smooth_data_naive[[2]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "GABBR2",
-     ylab = paste(mRNA[which(B5 == "GABBR2")[2]]), lwd = 2, ylim = c(-1.3,0), xlim=c(-2,4))
+     type = "l",     
+     xlab = "CHGA",
+     ylab = paste(mRNA[which(B5 == "CHGA")[2]]), lwd = 2)
 
 
-plot(smooth_data_I_05[[3]]$x, smooth_data_I_05[[3]]$y,
-     type = "l",      # "l" 代表畫線
-     xlab = "GABBR2",
-     ylab = paste(mRNA[which(B5 == "GABBR2")[3]]), lwd = 2, ylim = c(-0.6,0.3), xlim=c(-2,3))
+
+
+
+
 
 
 
@@ -570,10 +625,8 @@ plot(smooth_data_I_05[[3]]$x, smooth_data_I_05[[3]]$y,
 ################################################################
 
 
-microRNA = function(j,k,Sigma_delta) {
+microRNA = function(W,Z) {
 
-Z =  mean(Y[, j]) + (var(Y[, j]) - Sigma_delta[j,j]) / var(Y[, j]) * (Y[, j] - mean(Y[, j]))
-W =  mean(Y[, k]) + (var(Y[, k]) - Sigma_delta[k,k]) / var(Y[, k]) * (Y[, k] - mean(Y[, k]))
 DATA = data.frame(W, Z)
 model = randomForest(W ~ Z, data = DATA)
 pred = predict(model)
@@ -591,13 +644,13 @@ j = which(mRNA == "hsa.mir.204")
 k = which(mRNA == "hsa.mir.222")
 smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR1)
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",     
      xlab = paste(mRNA[j]),
      ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,3), ylim=c(-0.8,1))
 
 smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR)
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
      ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,3), ylim=c(-0.8,1))
 
@@ -606,149 +659,137 @@ plot(smooth_data$x, smooth_data$y,
 
 j = which(mRNA == "hsa.mir.136")
 k = which(mRNA == "hsa.mir.377")
-smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR1)
+smooth_data = microRNA(II_08$Y[,k], II_08$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-1.8,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,5), ylim=c(-4,3))
 
-smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR)
+smooth_data = microRNA(II_05$Y[,k], II_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-1.8,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,5), ylim=c(-4,3))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.2,m))
+smooth_data = microRNA(I_05$Y[,k], I_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-1.8,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,5), ylim=c(-4,3))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.5,m))
+smooth_data = microRNA(I_02$Y[,k], I_02$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-1.8,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,5), ylim=c(-4,3))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0,m))
+smooth_data = microRNA(Naive$Y[,k], Naive$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-1.8,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,5), ylim=c(-4,3))
 
 ######
 
 j = which(mRNA == "hsa.mir.377")
 k = which(mRNA == "hsa.mir.376a")
-smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR1)
+smooth_data = microRNA(II_08$Y[,k], II_08$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.5,2.5))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,7), ylim=c(-2.5,2.5))
 
-smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR)
+smooth_data = microRNA(II_05$Y[,k], II_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.5,2.5))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,7), ylim=c(-2.5,2.5))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.2,m))
+smooth_data = microRNA(I_05$Y[,k], I_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.5,2.5))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,7), ylim=c(-2.5,2.5))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.5,m))
+smooth_data = microRNA(I_02$Y[,k], I_02$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.5,2.5))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,7), ylim=c(-2.5,2.5))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0,m))
+smooth_data = microRNA(Naive$Y[,k], Naive$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.5,2.5))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-5,7), ylim=c(-2.5,2.5))
 
 
 ######
 
 j = which(mRNA == "hsa.mir.136")
 k = which(mRNA == "hsa.mir.376a")
-smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR1)
+smooth_data = microRNA(II_08$Y[,k], II_08$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.1,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-4,4), ylim=c(-2.1,1.8))
 
-smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR)
+smooth_data = microRNA(II_05$Y[,k], II_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.1,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-4,4), ylim=c(-2.1,1.8))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.2,m))
+smooth_data = microRNA(I_05$Y[,k], I_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.1,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-4,4), ylim=c(-2.1,1.8))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.5,m))
+smooth_data = microRNA(I_02$Y[,k], I_02$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.1,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-4,4), ylim=c(-2.1,1.8))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0,m))
+smooth_data = microRNA(Naive$Y[,k], Naive$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",     
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-2,2.8), ylim=c(-2.1,1.8))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-4,4), ylim=c(-2.1,1.8))
 
 
 
 
 ##################################### Uniqueness by Scenario I
 
-j = which(mRNA == "hsa.mir.630")
-k = which(mRNA == "hsa.mir.7")
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.2,m))
+j = which(mRNA == "hsa.mir.148a")
+k = which(mRNA == "hsa.mir.210")
+smooth_data = microRNA(I_05$Y[,k], I_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,4.5), ylim=c(-0.8,1))
-
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.5,m))
-plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
-     xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,4.5), ylim=c(-0.8,1))
-
-smooth_data = microRNA(j,k,Sigma_delta = diag(0,m))
-plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
-     xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,4.5), ylim=c(-0.8,1))
+     ylab = paste(mRNA[k]), lwd = 2)
 
 ######
-j = which(mRNA == "hsa.mir.10b")
-k = which(mRNA == "hsa.mir.222")
+j = which(mRNA == "hsa.mir.148a")
+k = which(mRNA == "hsa.mir.801")
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.2,m))
+smooth_data = microRNA(I_05$Y[,k], I_05$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,3), ylim=c(-1.8,1))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,3), ylim=c(-0.5,2.5))
 
-smooth_data = microRNA(j,k,Sigma_delta = diag(0.5,m))
+smooth_data = microRNA(I_02$Y[,k], I_02$Y[,j])
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
-     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,3), ylim=c(-1.8,1))
+     ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,3), ylim=c(-0.5,2.5))
 
 smooth_data = microRNA(j,k,Sigma_delta = sigma_deltaR1)
 plot(smooth_data$x, smooth_data$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = paste(mRNA[j]),
      ylab = paste(mRNA[k]), lwd = 2, xlim = c(-3,3), ylim=c(-1.8,1))
 
@@ -761,9 +802,8 @@ plot(smooth_data$x, smooth_data$y,
 
 ord_1 = order(Z)
 smooth_data_1 = lowess(Z[ord_1], pred[ord_1], f = 0.5) 
-# 畫線圖
 plot(smooth_data_1$x, smooth_data_1$y,
-     type = "l",      # "l" 代表畫線
+     type = "l",      
      xlab = "hsa.mir.376a",  #k=14
      ylab = "hsa.mir.377",  #j=15
      lwd = 2#,
