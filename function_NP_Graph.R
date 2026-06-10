@@ -68,7 +68,7 @@ NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta, label_name, var_thred = 5
     for (i in 1:n_resp) {
         for (j in 1:n_resp) {
             if (i != j) {
-                correlation[i, j] = metrica::dcorr(obs = y_matrix[, 
+                correlation[i, j] = metrica::dcorr(obs = r_matrix[, 
                   i], pred = r_matrix[, j])
             }
         }
