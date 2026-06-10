@@ -7,7 +7,7 @@ NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta, label_name, var_thred = 5
         Y = matrix(0, nrow = n, ncol = m)
         for (i in 1:n) {
             Y[i, ] = colMeans(W) + t(covariance_matrix_W - sigma_delta) %*% 
-                solve(covariance_matrix_W + diag(0.02, dim(W)[2])) %*% 
+                solve(covariance_matrix_W ) %*% 
                 (W[i, ] - colMeans(W))
         }
         return(as.data.frame(Y)) }
@@ -19,7 +19,7 @@ NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta, label_name, var_thred = 5
         X = matrix(0, nrow = n, ncol = p)
         for (i in 1:n) {
             X[i, ] = colMeans(Z) + t(covariance_matrix_Z - sigma_eta) %*% 
-                solve(covariance_matrix_Z + diag(0.02, dim(Z)[2])) %*% 
+                solve(covariance_matrix_Z ) %*% 
                 (Z[i, ] - colMeans(Z))
         }
         return(as.data.frame(X))
