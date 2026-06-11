@@ -1,6 +1,6 @@
 NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta, label_name, var_thred = 5) 
 {
-    correct_W = function(W, sigma_delta) {  ## apply regression calibration under multivariat version
+    correct_W = function(W, sigma_delta) {  ## apply regression calibration under multivariate version
         covariance_matrix_W = as.matrix(stats::cor(W))
         n = nrow(W)
         m = ncol(W)
@@ -12,7 +12,7 @@ NP_Graph = function(W, Z, sigma_eta, rho, sigma_delta, label_name, var_thred = 5
         }
         return(as.data.frame(Y)) }
 
-    correct_Z = function(Z, sigma_eta) {  ## apply regression calibration under multivariat version
+    correct_Z = function(Z, sigma_eta) {  ## apply regression calibration under multivariate version
         covariance_matrix_Z = as.matrix(stats::cor(Z))
         n = nrow(Z)
         p = ncol(Z)
